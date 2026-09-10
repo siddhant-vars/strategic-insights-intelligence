@@ -1,0 +1,83 @@
+import { useMemo, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { GroupCount } from "@/types/insight";
+import { cn } from "@/lib/utils";
+
+interface GeoChartProps {
+  regionData: GroupCount[];
+  countryData: GroupCount[];
+  onSelectRegion: (region: string) => void;
+  onSelectCountry: (country: string) => void;
+}
+
+type View = "region" | "country";
+
+export function GeoChart({ regionData, countryData, onSelectRegion, onSelectCountry }: GeoChartProps) {
+  const [view, setView] = useState<View>("region");
+
+  const data = view === "region" ? regionData : countryData;
+  const chartData = useMemo(
+    () => [...data].sort((a, b) => b.count - a.count).slice(0, 12).map((d) => ({ name: d.key, count: d.count, avgIntensity: d.avgIntensity })),
+    [data]
+  );
+
+  return (
+    <div>
+      <div className="mb-3 flex gap-1.5">
+        {(["region", "country"] as View[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={cn(
+              "focus-ring rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+              view === v
+                ? "bg-brand-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            )}
+          >
+            By {v}
+          </button>
+        ))}
+      </div>
+
+      <ResponsiveContainer width="100%" height={340}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-slate-200 dark:stroke-slate-800" />
+          <XAxis type="number" tick={{ fontSize: 11 }} className="fill-slate-500" allowDecimals={false} />
+          <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} className="fill-slate-500" />
+          <Tooltip
+            cursor={{ fill: "rgba(14,165,233,0.06)" }}
+            content={({ active, payload, label }) => {
+              if (!active || !payload || payload.length === 0) return null;
+              const p = payload[0].payload as { count: number; avgIntensity: number | null };
+              return (
+                <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{label}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Insights: {p.count}</div>
+                  {p.avgIntensity !== null && <div className="text-slate-500 dark:text-slate-400">Avg Intensity: {p.avgIntensity}</div>}
+                </div>
+              );
+            }}
+          />
+          <Bar
+            dataKey="count"
+            radius={[0, 6, 6, 0]}
+            cursor="pointer"
+            onClick={(entry) => {
+              const name = (entry as unknown as { name: string }).name;
+              view === "region" ? onSelectRegion(name) : onSelectCountry(name);
+            }}
+          >
+            {chartData.map((_, i) => (
+              <Cell key={i} fill="#0ea5e9" fillOpacity={1 - i * 0.045} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+        Click a bar to filter the dashboard by that {view}. Records with no recorded {view} are excluded from this
+        chart rather than grouped under a fabricated "unknown" location.
+      </p>
+    </div>
+  );
+}
