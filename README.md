@@ -1,4 +1,10 @@
 # Strategic Insights Intelligence
+Strategic Insights Intelligence — Full-Stack Data Visualization Dashboard
+
+Live Application: https://strategic-insights-intelligence.vercel.app
+
+
+Backend API: https://strategic-insights-intelligence.onrender.com
 
 **Global signals, risks & emerging trends** — a data visualization dashboard built for the Blackcoffer Data Visualization Dashboard Test Assignment.
 
@@ -53,7 +59,7 @@ A full-stack application (Node.js/Express/TypeScript/MongoDB backend + React/Typ
 ```
 ┌──────────────────────┐        HTTP/JSON        ┌───────────────────────┐        Mongoose        ┌───────────────┐
 │   React + Vite SPA   │  ───────────────────▶   │  Express + TypeScript │  ───────────────────▶  │    MongoDB    │
-│  (frontend/, :5173)  │  ◀───────────────────   │   API (backend/, :5000)│  ◀───────────────────  │  (insights)   │
+│  (frontend/, :5173)  │  ◀───────────────────   │   API (backend/, :5001)│  ◀───────────────────  │  (insights)   │
 └──────────────────────┘                          └───────────────────────┘                         └───────────────┘
         │                                                    │
         │  TanStack Query (cache + refetch)                  │  Aggregation pipelines
@@ -117,7 +123,7 @@ cp frontend/.env
 
 | Variable      | Description                     | Default                                        |
 | ------------- | ------------------------------- | ---------------------------------------------- |
-| `PORT`        | API server port                 | `5000`                                         |
+| `PORT`        | API server port                 | `5001`                                         |
 | `NODE_ENV`    | `development` \| `production`   | `development`                                  |
 | `MONGODB_URI` | MongoDB connection string       | `mongodb://127.0.0.1:27017/strategic_insights` |
 | `CORS_ORIGIN` | Comma-separated allowed origins | `http://localhost:5173`                        |
@@ -126,7 +132,7 @@ cp frontend/.env
 
 | Variable            | Description          | Default                     |
 | ------------------- | -------------------- | --------------------------- |
-| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:5000/api` |
+| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:5001/api` |
 
 ## Installation
 
@@ -172,7 +178,7 @@ Run backend and frontend in two terminals:
 ```bash
 # Terminal 1
 cd backend
-npm run dev        # http://localhost:5000
+npm run dev        # http://localhost:5001
 
 # Terminal 2
 cd frontend
@@ -197,17 +203,25 @@ npm run preview     # or serve dist/ with any static file server / nginx
 
 ## Docker
 
-A `docker-compose.yml` at the project root spins up MongoDB, the backend API, and the frontend (served via nginx) together:
+A `docker-compose.yml` at the project root spins up MongoDB, the backend API, and the frontend (served via nginx):
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
-Then run the seed script once against the containerized Mongo (from your host, with `MONGODB_URI=mongodb://localhost:27017/strategic_insights`, or by exec-ing into the backend container).
+Seeding is deliberately **not** run automatically on every `up` — the seed script is destructive (it clears the collection before re-inserting, to stay idempotent), so it should only run when you explicitly ask for it, not every time the stack restarts. Run it once, as a one-off job, after the stack is up:
+
+```bash
+docker compose run --rm seed
+```
+
+This uses a dedicated `seed` service (see `docker-compose.yml`) that shares the backend's Dockerfile/image, connects to the same `mongo` container over the compose network, and reads `jsondata.json` from the same read-only bind mount the backend uses — no manual `exec`-ing into a running container or juggling host-vs-container Mongo URIs required. It's safe to re-run any time you want to reset back to a clean seeded state.
+
+Once seeded, the app is live at `http://localhost:5173` (frontend) talking to `http://localhost:5001/api` (backend).
 
 ## API Documentation
 
-Base URL: `http://localhost:5000/api`
+Base URL: `http://localhost:5001/api`
 
 | Method | Endpoint              | Description                                                                                                                           |
 | ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -265,6 +279,12 @@ GET /api/insights?page=2&limit=20&sortBy=intensity&sortOrder=desc&topic=gas
 │   │   ├── types/insight.ts
 │   │   └── App.tsx, main.tsx, index.css
 │   └── package.json, tsconfig.json, vite.config.ts, tailwind.config.js, Dockerfile, .env.example
+├── docs/
+│   └── screenshots/
+│       ├── overview-light.png
+│       ├── overview-dark.png
+│       ├── risk-matrix.png
+│       └── data-explorer.png
 ├── jsondata.json
 ├── docker-compose.yml
 ├── .gitignore

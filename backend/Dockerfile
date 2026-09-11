@@ -13,4 +13,4 @@ RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/scripts ./scripts
 EXPOSE 5000
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]

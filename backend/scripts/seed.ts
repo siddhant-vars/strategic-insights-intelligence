@@ -31,7 +31,31 @@ interface RawRecord {
   url?: unknown;
 }
 
-const DATA_PATH = path.resolve(__dirname, "../../jsondata.json");
+/**
+ * Resolves the path to jsondata.json across every way this script can run:
+ *  - `npm run seed` (ts-node, from backend/scripts/seed.ts) -> project root
+ *    is two levels up.
+ *  - `npm run seed:compiled` (compiled, from backend/dist/scripts/seed.js)
+ *    -> one extra directory level from the `dist/` build output.
+ *  - Inside the Docker image, jsondata.json is bind-mounted directly at
+ *    /app/jsondata.json (see docker-compose.yml), which happens to line up
+ *    with the same two-levels-up resolution as ts-node local dev.
+ *  - JSONDATA_PATH env var always wins if set, as an explicit escape hatch.
+ */
+function resolveDataPath(): string {
+  if (process.env.JSONDATA_PATH) return path.resolve(process.env.JSONDATA_PATH);
+
+  const candidates = [
+    path.resolve(__dirname, "../../jsondata.json"), // ts-node local dev / Docker mount
+    path.resolve(__dirname, "../../../jsondata.json"), // compiled dist/scripts/seed.js run locally
+    path.resolve(process.cwd(), "jsondata.json"), // fallback: run from project root directly
+  ];
+
+  const found = candidates.find((p) => fs.existsSync(p));
+  return found ?? candidates[0];
+}
+
+const DATA_PATH = resolveDataPath();
 const MONGODB_URI = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/strategic_insights";
 
 interface NormalizationIssue {
